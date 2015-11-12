@@ -482,7 +482,7 @@ method spawn_worker( HashRef meta, Str worker, ArrayRef args? ) {
         undef $AnyEvent::CondVar::Base::WAITING;
 
         my $tun_mgr = $self -> create_tunnel_manager( $meta, [ @pipes{ 'tun_read', 'tun_write' } ] );
-        my $o = Salvation::DaemonDecl::Worker -> new(
+        my $o = $self -> worker_class() -> new(
             %{ $worker_meta -> { 'descr' } },
             parent => $parent_pid,
             meta => $meta,
@@ -1225,6 +1225,12 @@ sub wait_cond {
 
     return $rv;
 }
+
+=head2 worker_class()
+
+=cut
+
+sub worker_class { 'Salvation::DaemonDecl::Worker' }
 
 1;
 

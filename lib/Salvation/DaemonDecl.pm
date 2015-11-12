@@ -23,7 +23,7 @@ use Sub::Prototype 'set_prototype';
 use B::Hooks::EndOfScope 'on_scope_end';
 use Salvation::DaemonDecl::Backend ();
 
-our $VERSION = 0.02;
+our $VERSION = 0.03;
 
 =head1 METHODS
 
@@ -91,7 +91,6 @@ sub import {
         next unless( $import_all || exists $required_methods{ $name } );
 
         my $method = "${caller}::${name}";
-        my $target = "Salvation::DaemonDecl::Backend::${name}";
 
         no strict 'refs';
         no warnings 'once';
@@ -100,8 +99,8 @@ sub import {
 
             local *__ANON__ = $name;
 
-            return Salvation::DaemonDecl::Backend -> $target(
-                Salvation::DaemonDecl::Backend -> get_meta( $caller ), @_
+            return $self -> backend_class() -> $name(
+                $self -> backend_class() -> get_meta( $caller ), @_
             );
         };
     }
@@ -168,8 +167,8 @@ sub ext_worker {
 
     my ( $self, $class, $descr ) = @_;
 
-    Salvation::DaemonDecl::Backend -> add_worker(
-        Salvation::DaemonDecl::Backend -> get_meta( $class ) => $descr
+    $self -> backend_class() -> add_worker(
+        $self -> backend_class() -> get_meta( $class ) => $descr
     );
 
     return;
@@ -305,8 +304,14 @@ sub ext_wait_cond {
 
     my ( $self, $class, $cv ) = @_;
 
-    return Salvation::DaemonDecl::Backend -> wait_cond( $cv );
+    return $self -> backend_class() -> wait_cond( $cv );
 }
+
+=head2 backend_class()
+
+=cut
+
+sub backend_class { 'Salvation::DaemonDecl::Backend' }
 
 1;
 

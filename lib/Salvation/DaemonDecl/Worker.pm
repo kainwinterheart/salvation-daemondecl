@@ -80,7 +80,7 @@ sub write_to_parent {
 
     my ( $self, $data ) = @_;
 
-    return Salvation::DaemonDecl::Backend -> write_to( $self -> get_meta(), $self -> parent(), $data );
+    return $self -> backend_class() -> write_to( $self -> get_meta(), $self -> parent(), $data );
 }
 
 =head2 read_from_parent( Int len, CodeRef cb )
@@ -93,7 +93,7 @@ sub read_from_parent {
 
     my ( $self, $len, $cb ) = @_;
 
-    return Salvation::DaemonDecl::Backend -> read_from( $self -> get_meta(), $self -> parent(), $len, $cb );
+    return $self -> backend_class() -> read_from( $self -> get_meta(), $self -> parent(), $len, $cb );
 }
 
 =head2 main( ArrayRef args? )
@@ -163,6 +163,12 @@ sub attr {
 
     return $self -> { 'ctx' } -> { $key };
 }
+
+=head2 backend_class()
+
+=cut
+
+sub backend_class { 'Salvation::DaemonDecl::Backend' }
 
 1;
 
