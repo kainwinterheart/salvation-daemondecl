@@ -90,6 +90,7 @@ no Salvation::TC::Utils;
             },
             signals_reinstalled => false,
             signals => [],
+            non_zero_exit_statuses_count => 0,
         };
     }
 }
@@ -462,9 +463,15 @@ method spawn_worker( HashRef meta, Str worker, ArrayRef args? ) {
             },
         };
 
+        while( my ( undef, $worker_meta ) = each( %{ $meta -> { 'workers' } } ) ) {
+
+            $worker_meta -> { 'instances' } = 0;
+        }
+
         $meta -> { 'dead' } = [];
         $meta -> { 'routes' } = {};
         $meta -> { 'tmp_tunnel_prefixes' } = { $pid => {} };
+        $meta -> { 'non_zero_exit_statuses_count' } = 0;
 
         # Если в качестве бэкэнда AnyEvent используется EV (на что итак идёт
         # рассчёт), то рекомендуется явно сказать EV'у о вызове fork()
@@ -483,8 +490,9 @@ method spawn_worker( HashRef meta, Str worker, ArrayRef args? ) {
         );
 
         eval{ $o -> main( defined $args ? $args : () ) };
+        my $err = $@;
 
-        $o -> log( $0 . ': ' . $@ ) if $@;
+        $o -> log( $0 . ': ' . $err ) if $err;
 
         undef $o;
         undef $tun_mgr;
@@ -498,7 +506,14 @@ method spawn_worker( HashRef meta, Str worker, ArrayRef args? ) {
             }
         }
 
-        exit( 0 );
+        if( $err || ( $meta -> { 'non_zero_exit_statuses_count' } > 0 ) ) {
+
+            exit( 1 );
+
+        } else {
+
+            exit( 0 );
+        }
     }
 
     $out{ 'reap_mgr' } = AnyEvent -> child(
@@ -543,7 +558,7 @@ method daemon_main( HashRef meta, Str worker, ArrayRef args? ) {
     $self -> spawn_worker( $meta => $worker, ( defined $args ? $args : () ) );
     $self -> wait_all_workers( $meta );
 
-    return;
+    return ( $meta -> { 'non_zero_exit_statuses_count' } == 0 );
 }
 
 =head2 reinstall_signals( HashRef meta )
@@ -616,6 +631,11 @@ sub reap_worker {
                 $worker -> { $_ } -> destroy();
                 close( $fh );
             }
+        }
+
+        if( $status != 0 ) {
+
+            ++ $meta -> { 'non_zero_exit_statuses_count' };
         }
 
         $worker_meta -> { 'slot_condvar' } -> send() if defined $worker_meta -> { 'slot_condvar' };
